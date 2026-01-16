@@ -323,11 +323,16 @@ client.on("message", async (message) => {
       if (args.length < 1) return message.reply("Usage: @imgsearch [query] [number]");
       const count = parseInt(args[args.length - 1]);
       const query = isNaN(count) ? args.join(" ") : args.slice(0, -1).join(" ");
-      const finalCount = isNaN(count) ? 1 : Math.min(count, 5); // Limit to 5 to avoid spam/crashes
+      const finalCount = isNaN(count) ? 1 : Math.min(count, 5);
 
       try {
         const response = await axios.get(`https://api.fdci.se/sosmed/rep.php?gambar=${encodeURIComponent(query)}`);
         const images = response.data; 
+
+        // SAFETY CHECK: Ensure the API actually gave us a list of images
+        if (!Array.isArray(images) || images.length === 0) {
+          return message.reply("No images found for that query.");
+        }
 
         for (let i = 0; i < Math.min(images.length, finalCount); i++) {
           const imgRes = await axios.get(images[i], { responseType: "arraybuffer" });
@@ -335,7 +340,7 @@ client.on("message", async (message) => {
           await client.sendMessage(message.from, media);
         }
       } catch (error) {
-        await message.reply("Failed to fetch images.");
+        await message.reply("The image search service is currently down.");
       }
       break;
     
