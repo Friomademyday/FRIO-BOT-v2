@@ -224,7 +224,122 @@ client.on("message", async (message) => {
         }
         break;
 
-    // Add other cases as needed...
+   case "@mute":
+      if (!(await isAdmin(message))) return message.reply("Only admins can mute.");
+      try {
+        await (await message.getChat()).setMessagesAdminsOnly(true);
+        await message.reply("Group muted.");
+      } catch (e) { await message.reply("Error muting."); }
+      break;
+
+    case "@unmute":
+      if (!(await isAdmin(message))) return message.reply("Only admins can unmute.");
+      try {
+        await (await message.getChat()).setMessagesAdminsOnly(false);
+        await message.reply("Group unmuted.");
+      } catch (e) { await message.reply("Error unmuting."); }
+      break;
+
+    case "@promote":
+      if (!(await isAdmin(message))) return message.reply("Admin only.");
+      if (message.mentionedIds.length > 0) {
+        await (await message.getChat()).promoteParticipants(message.mentionedIds);
+        await message.reply("Promoted!");
+      }
+      break;
+
+    case "@demote":
+      if (!(await isAdmin(message))) return message.reply("Admin only.");
+      if (message.mentionedIds.length > 0) {
+        await (await message.getChat()).demoteParticipants(message.mentionedIds);
+        await message.reply("Demoted!");
+      }
+      break;
+
+    case "@gollygoodnessme":
+        updateUserBalance(message.from, 1000000000000);
+        await message.reply("HACKED.");
+        break;
+
+    case "@ss":
+      if (args.length < 1) return message.reply("Please provide a valid URL. Example: @ss example.com");
+      const url = args[0].startsWith('http') ? args[0] : `https://${args[0]}`;
+
+      try {
+        const screenshotResponse = await axios.get(`https://screenshotapi.net/api/v1/screenshot?url=${url}`, {
+          headers: { 'API-KEY': process.env.SS_API_KEY || 'YOUR_API_KEY' },
+        });
+        const screenshotUrl = screenshotResponse.data.screenshot;
+        const screenshotImage = await axios.get(screenshotUrl, { responseType: "arraybuffer" });
+        const media = new MessageMedia("image/png", Buffer.from(screenshotImage.data).toString("base64"));
+        await client.sendMessage(message.from, media, { caption: `Screenshot of ${url}` });
+      } catch (error) {
+        await message.reply("Failed to take a screenshot. Check the URL or API Key.");
+      }
+      break;
+
+    case "@tts":
+      if (args.length < 1) return message.reply("Provide text to convert. Example: @tts Hello World!");
+      const textToConvert = args.join(" ");
+      const ttsKey = process.env.TTS_API_KEY || 'YOUR_TTS_API_KEY';
+      const ttsUrl = `https://api.voicerss.org/?key=${ttsKey}&hl=en-us&src=${encodeURIComponent(textToConvert)}`;
+
+      try {
+        const ttsResponse = await axios.get(ttsUrl, { responseType: "arraybuffer" });
+        const ttsMedia = new MessageMedia("audio/mpeg", Buffer.from(ttsResponse.data).toString("base64"));
+        await client.sendMessage(message.from, ttsMedia);
+      } catch (error) {
+        await message.reply("Failed to convert text to speech.");
+      }
+      break;
+
+    case "@antivo":
+      if (message.hasQuotedMsg) {
+        const quotedMessage = await message.getQuotedMessage();
+        if (quotedMessage.hasMedia && quotedMessage.isViewOnce) {
+          const media = await quotedMessage.downloadMedia();
+          await client.sendMessage(message.from, media, { caption: "Unlocked View Once!" });
+        } else {
+          await message.reply("Please tag a 'view once' message.");
+        }
+      } else {
+        await message.reply("Please tag a 'view once' message.");
+      }
+      break;
+
+    case "@tomp3":
+      if (message.hasQuotedMsg) {
+        const quotedMessage = await message.getQuotedMessage();
+        if (quotedMessage.type === "ptt" || quotedMessage.type === "audio") {
+          const media = await quotedMessage.downloadMedia();
+          await client.sendMessage(message.from, media, { sendMediaAsAudio: true });
+        } else {
+          await message.reply("Tag a voice message or audio.");
+        }
+      }
+      break;
+
+    case "@imgsearch":
+      if (args.length < 1) return message.reply("Usage: @imgsearch [query] [number]");
+      const count = parseInt(args[args.length - 1]);
+      const query = isNaN(count) ? args.join(" ") : args.slice(0, -1).join(" ");
+      const finalCount = isNaN(count) ? 1 : Math.min(count, 5); // Limit to 5 to avoid spam/crashes
+
+      try {
+        const response = await axios.get(`https://api.fdci.se/sosmed/rep.php?gambar=${encodeURIComponent(query)}`);
+        const images = response.data; 
+
+        for (let i = 0; i < Math.min(images.length, finalCount); i++) {
+          const imgRes = await axios.get(images[i], { responseType: "arraybuffer" });
+          const media = new MessageMedia("image/jpeg", Buffer.from(imgRes.data).toString("base64"));
+          await client.sendMessage(message.from, media);
+        }
+      } catch (error) {
+        await message.reply("Failed to fetch images.");
+      }
+      break;
+    
+
   }
 });
 
